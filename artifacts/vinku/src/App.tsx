@@ -22,6 +22,8 @@ import {
   Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MapContainer, TileLayer, Marker } from "react-leaflet";
+import L from "leaflet";
 
 const queryClient = new QueryClient();
 
@@ -153,61 +155,73 @@ function VinkuProvider({ children }: { children: React.ReactNode }) {
    UI HELPERS
 ═══════════════════════════════════════════ */
 
-/* ─── Simulated Map ─── */
-function SimulatedMap() {
-  const markers = [
-    { cx: 80, cy: 90 },
-    { cx: 200, cy: 140 },
-    { cx: 310, cy: 80 },
-    { cx: 140, cy: 200 },
-    { cx: 270, cy: 195 },
-  ];
+/* ─── Interactive Map ─── */
+const MONTERIA: [number, number] = [8.7479, -75.8814];
+
+function createPlanIcon(isLow: boolean) {
+  const color = isLow ? "#f59e0b" : "#6366f1";
+  const ring = isLow ? "rgba(245,158,11,0.25)" : "rgba(99,102,241,0.25)";
+  const glow = isLow ? "rgba(245,158,11,0.55)" : "rgba(99,102,241,0.55)";
+  return L.divIcon({
+    html: `
+      <div style="
+        width:32px;height:32px;border-radius:50%;
+        background:${color};
+        box-shadow:0 0 0 6px ${ring},0 0 18px ${glow};
+        border:2.5px solid rgba(255,255,255,0.85);
+        display:flex;align-items:center;justify-content:center;
+        cursor:pointer;
+      ">
+        <div style="width:9px;height:9px;border-radius:50%;background:#fff;opacity:0.9;"></div>
+      </div>`,
+    className: "",
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -20],
+  });
+}
+
+function InteractiveMap({ onSelectPlan }: { onSelectPlan: (plan: Plan) => void }) {
+  const { planes } = useVinku();
 
   return (
     <div className="relative w-full overflow-hidden rounded-2xl" style={{ height: 210 }}>
-      <svg viewBox="0 0 390 210" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-        <rect width="390" height="210" fill="#0d0d11" />
-        {[30, 70, 110, 150, 190].map((y) => (
-          <line key={`h${y}`} x1="0" y1={y} x2="390" y2={y} stroke="#1a1a24" strokeWidth="1" />
-        ))}
-        {[50, 100, 150, 200, 250, 300, 350].map((x) => (
-          <line key={`v${x}`} x1={x} y1="0" x2={x} y2="210" stroke="#1a1a24" strokeWidth="1" />
-        ))}
-        <path d="M 0 105 Q 100 95 200 105 Q 300 115 390 105" stroke="#22223a" strokeWidth="8" fill="none" />
-        <path d="M 195 0 Q 190 60 200 105 Q 210 150 195 210" stroke="#22223a" strokeWidth="8" fill="none" />
-        <path d="M 0 60 Q 120 55 200 65 Q 280 75 390 65" stroke="#1e1e30" strokeWidth="5" fill="none" />
-        <path d="M 0 155 Q 130 148 200 155 Q 300 162 390 155" stroke="#1e1e30" strokeWidth="5" fill="none" />
-        <path d="M 100 0 Q 95 80 100 210" stroke="#1e1e30" strokeWidth="4" fill="none" />
-        <path d="M 300 0 Q 305 80 300 210" stroke="#1e1e30" strokeWidth="4" fill="none" />
-        <rect x="52" y="12" width="44" height="44" rx="3" fill="#13131c" />
-        <rect x="205" y="12" width="90" height="44" rx="3" fill="#13131c" />
-        <rect x="52" y="70" width="44" height="30" rx="3" fill="#13131c" />
-        <rect x="52" y="115" width="44" height="35" rx="3" fill="#13131c" />
-        <rect x="205" y="115" width="90" height="35" rx="3" fill="#13131c" />
-        <rect x="305" y="70" width="82" height="80" rx="3" fill="#13131c" />
-        {markers.map((m, i) => (
-          <g key={i}>
-            <circle cx={m.cx} cy={m.cy} r="14" fill="rgba(99,102,241,0.08)" />
-            <circle cx={m.cx} cy={m.cy} r="9" fill="rgba(99,102,241,0.15)" />
-            <circle cx={m.cx} cy={m.cy} r="5" fill="#6366f1" style={{ filter: "drop-shadow(0 0 6px #6366f1)" }} />
-            <circle cx={m.cx} cy={m.cy} r="2.5" fill="#a5b4fc" />
-          </g>
-        ))}
-        <defs>
-          <radialGradient id="vignette" cx="50%" cy="50%" r="50%">
-            <stop offset="60%" stopColor="transparent" />
-            <stop offset="100%" stopColor="#0a0a0c" />
-          </radialGradient>
-        </defs>
-        <rect width="390" height="210" fill="url(#vignette)" />
-      </svg>
-      <div className="absolute top-3 left-3 right-3">
+      {/* Search bar overlay — above map */}
+      <div className="absolute top-3 left-3 right-3 z-[1000] pointer-events-none">
         <div className="flex items-center gap-2 bg-[#0f0f18]/90 backdrop-blur-md border border-border/60 rounded-xl px-4 py-3 shadow-lg">
           <Search className="w-4 h-4 text-muted-foreground shrink-0" />
           <span className="text-muted-foreground text-sm">¿Dónde es el parche hoy?</span>
         </div>
       </div>
-      <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+
+      <MapContainer
+        center={MONTERIA}
+        zoom={14}
+        scrollWheelZoom={false}
+        zoomControl={false}
+        attributionControl={false}
+        style={{ width: "100%", height: "100%", borderRadius: "16px", background: "#0d0d11" }}
+      >
+        <TileLayer
+          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          subdomains="abcd"
+          maxZoom={19}
+        />
+        {planes.map((plan) => (
+          <Marker
+            key={plan.id}
+            position={[plan.coordinates.lat, plan.coordinates.lng]}
+            icon={createPlanIcon(plan.availableCupos <= 5)}
+            eventHandlers={{ click: () => onSelectPlan(plan) }}
+          />
+        ))}
+      </MapContainer>
+
+      {/* Bottom fade to match app background */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none z-[999]"
+        style={{ background: "linear-gradient(to top, #0a0a0c, transparent)" }}
+      />
     </div>
   );
 }
@@ -321,8 +335,8 @@ function PlanCard({ plan, onSelect }: { plan: Plan; onSelect: () => void }) {
 ═══════════════════════════════════════════ */
 
 /* ─── Inicio View ─── */
-function InicioView() {
-  const { planes, selectPlan } = useVinku();
+function InicioView({ onSelectPlan }: { onSelectPlan: (plan: Plan) => void }) {
+  const { planes } = useVinku();
 
   return (
     <div className="flex flex-col animate-in fade-in duration-300">
@@ -345,14 +359,14 @@ function InicioView() {
       </div>
 
       <div className="px-4 mb-5">
-        <SimulatedMap />
+        <InteractiveMap onSelectPlan={onSelectPlan} />
       </div>
 
       <div className="px-4 pb-4">
         <h2 className="text-white font-semibold text-base mb-3">Cerca de ti</h2>
         <div className="flex flex-col gap-4">
           {planes.map((plan) => (
-            <PlanCard key={plan.id} plan={plan} onSelect={() => selectPlan(plan)} />
+            <PlanCard key={plan.id} plan={plan} onSelect={() => onSelectPlan(plan)} />
           ))}
         </div>
       </div>
@@ -840,7 +854,7 @@ function MobileLayout() {
         <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[88px]">
           <div key={activeTab + String(selectedPlan?.id ?? "")} className="view-enter min-h-full">
             {activeTab === "inicio" && (
-              <InicioView />
+              <InicioView onSelectPlan={handleSelectPlan} />
             )}
 
             {activeTab === "plan" && selectedPlan && (
