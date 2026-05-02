@@ -100,6 +100,21 @@ const INITIAL_PLANES: Plan[] = [
     coordinates: { lat: 8.7432, lng: -75.8891 },
     confirmedAttendees: ["Ana", "Jorge"],
   },
+  {
+    id: 4,
+    title: "Noche Urbana",
+    category: "Electrónica",
+    description:
+      "El mejor techno y house de la ciudad. Sets en vivo de artistas locales e internacionales en el único club con sistema de sonido Funktion-One en Montería.",
+    location: "Zona Rosa, Carrera 2 #34-55, Montería",
+    date: "Sábado, 3 de mayo",
+    time: "11:00 PM",
+    totalCupos: 40,
+    availableCupos: 15,
+    image: "https://images.unsplash.com/photo-1571266028253-6c7b369eb2d5?w=600&q=80",
+    coordinates: { lat: 8.7510, lng: -75.8840 },
+    confirmedAttendees: ["Diego", "Valentina", "Carlos"],
+  },
 ];
 
 /* ═══════════════════════════════════════════

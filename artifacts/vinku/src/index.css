@@ -257,6 +257,15 @@ html, body {
   max-width: 100vw;
 }
 
+/* ─── Hide scrollbar utility ─── */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* ─── html5-qrcode camera feed overrides ─── */
 #qr-camera-feed video {
   width: 100% !important;
