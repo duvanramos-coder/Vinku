@@ -222,3 +222,37 @@
 *::-webkit-scrollbar {
   display: none;
 }
+
+/* ─── QR button pulse glow ─── */
+@keyframes qr-pulse-glow {
+  0%, 100% {
+    box-shadow:
+      0 0 0 0 rgba(99, 102, 241, 0),
+      0 0 10px rgba(99, 102, 241, 0.35),
+      0 4px 20px rgba(0, 0, 0, 0.4);
+  }
+  50% {
+    box-shadow:
+      0 0 0 8px rgba(99, 102, 241, 0.12),
+      0 0 28px rgba(99, 102, 241, 0.55),
+      0 4px 20px rgba(0, 0, 0, 0.4);
+  }
+}
+.qr-pulse {
+  animation: qr-pulse-glow 2.2s ease-in-out infinite;
+}
+
+/* ─── View fade-in transition ─── */
+@keyframes view-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.view-enter {
+  animation: view-fade-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ─── No horizontal overflow ─── */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}

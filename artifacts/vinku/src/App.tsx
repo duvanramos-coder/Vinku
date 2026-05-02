@@ -671,28 +671,30 @@ function MobileLayout() {
   }
 
   return (
-    <div className="min-h-[100dvh] w-full bg-background flex justify-center text-foreground font-sans">
+    <div className="min-h-[100dvh] w-full bg-background flex justify-center text-foreground font-sans overflow-x-hidden">
       <div className="w-full max-w-[428px] relative h-[100dvh] overflow-hidden flex flex-col bg-background shadow-2xl">
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto pb-[88px]">
-          {activeTab === "inicio" && (
-            <InicioView onSelectParche={handleSelectParche} />
-          )}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[88px]">
+          <div key={activeTab + String(selectedParche?.id ?? "")} className="view-enter min-h-full">
+            {activeTab === "inicio" && (
+              <InicioView onSelectParche={handleSelectParche} />
+            )}
 
-          {activeTab === "plan" && selectedParche && (
-            <PlanView parche={selectedParche} onBack={handleBackFromPlan} />
-          )}
+            {activeTab === "plan" && selectedParche && (
+              <PlanView parche={selectedParche} onBack={handleBackFromPlan} />
+            )}
 
-          {activeTab === "plan" && !selectedParche && (
-            <PlanEmpty onGoInicio={() => setActiveTab("inicio")} />
-          )}
+            {activeTab === "plan" && !selectedParche && (
+              <PlanEmpty onGoInicio={() => setActiveTab("inicio")} />
+            )}
 
-          {activeTab === "escanear" && (
-            <EscanearView onCancel={() => setActiveTab("inicio")} />
-          )}
+            {activeTab === "escanear" && (
+              <EscanearView onCancel={() => setActiveTab("inicio")} />
+            )}
 
-          {activeTab === "perfil" && <PerfilView />}
+            {activeTab === "perfil" && <PerfilView />}
+          </div>
         </main>
 
         {/* Bottom Navigation */}
@@ -715,10 +717,10 @@ function MobileLayout() {
             <button
               onClick={() => setActiveTab("escanear")}
               className={cn(
-                "w-16 h-16 rounded-full bg-background flex items-center justify-center border-2 shadow-lg transition-all duration-300 z-50",
+                "w-16 h-16 rounded-full bg-background flex items-center justify-center border-2 transition-all duration-300 z-50 active:scale-[0.90]",
                 activeTab === "escanear"
-                  ? "border-primary shadow-[0_0_20px_rgba(99,102,241,0.6)] text-primary scale-105"
-                  : "border-primary/50 text-white hover:border-primary hover:shadow-[0_0_15px_rgba(99,102,241,0.4)]"
+                  ? "border-primary shadow-[0_0_24px_rgba(99,102,241,0.7)] text-primary scale-105"
+                  : "border-primary/60 text-white qr-pulse"
               )}
             >
               <QrCode className="w-7 h-7" />
@@ -761,7 +763,7 @@ function NavItem({
     <button
       onClick={onClick}
       className={cn(
-        "flex flex-col items-center justify-center w-[64px] gap-1 transition-all duration-200",
+        "flex flex-col items-center justify-center w-[64px] gap-1 transition-all duration-150 active:scale-[0.88]",
         isActive ? "text-primary" : "text-muted-foreground hover:text-foreground/80"
       )}
     >
