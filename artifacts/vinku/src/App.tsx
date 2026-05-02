@@ -103,9 +103,11 @@ const INITIAL_PLANES: Plan[] = [
 type VinkuState = {
   planes: Plan[];
   selectedPlan: Plan | null;
+  myActivePlans: Plan[];
   selectPlan: (plan: Plan) => void;
   clearPlan: () => void;
   joinPlan: (id: number) => void;
+  isJoined: (id: number) => boolean;
 };
 
 const VinkuContext = createContext<VinkuState | null>(null);
@@ -119,6 +121,7 @@ function useVinku(): VinkuState {
 function VinkuProvider({ children }: { children: React.ReactNode }) {
   const [planes, setPlanes] = useState<Plan[]>(INITIAL_PLANES);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  const [myActivePlans, setMyActivePlans] = useState<Plan[]>([]);
 
   function selectPlan(plan: Plan) {
     const fresh = planes.find((p) => p.id === plan.id) ?? plan;
@@ -129,7 +132,13 @@ function VinkuProvider({ children }: { children: React.ReactNode }) {
     setSelectedPlan(null);
   }
 
+  function isJoined(id: number): boolean {
+    return myActivePlans.some((p) => p.id === id);
+  }
+
   function joinPlan(id: number) {
+    if (isJoined(id)) return;
+
     setPlanes((prev) =>
       prev.map((p) =>
         p.id === id && p.availableCupos > 0
@@ -142,10 +151,17 @@ function VinkuProvider({ children }: { children: React.ReactNode }) {
         ? { ...prev, availableCupos: prev.availableCupos - 1 }
         : prev
     );
+    setMyActivePlans((prev) => {
+      const plan = planes.find((p) => p.id === id);
+      if (!plan || prev.some((p) => p.id === id)) return prev;
+      return [...prev, plan];
+    });
   }
 
   return (
-    <VinkuContext.Provider value={{ planes, selectedPlan, selectPlan, clearPlan, joinPlan }}>
+    <VinkuContext.Provider
+      value={{ planes, selectedPlan, myActivePlans, selectPlan, clearPlan, joinPlan, isJoined }}
+    >
       {children}
     </VinkuContext.Provider>
   );
@@ -376,14 +392,14 @@ function InicioView({ onSelectPlan }: { onSelectPlan: (plan: Plan) => void }) {
 
 /* ─── Plan Detail View ─── */
 function PlanView({ onBack }: { onBack: () => void }) {
-  const { selectedPlan, joinPlan } = useVinku();
+  const { selectedPlan, joinPlan, isJoined } = useVinku();
   const [joining, setJoining] = useState(false);
-  const [joined, setJoined] = useState(false);
 
   if (!selectedPlan) return null;
 
   const plan = selectedPlan;
   const isLow = plan.availableCupos <= 5;
+  const joined = isJoined(plan.id);
 
   function handleJoin() {
     if (joining || joined || plan.availableCupos === 0) return;
@@ -391,7 +407,6 @@ function PlanView({ onBack }: { onBack: () => void }) {
     setTimeout(() => {
       joinPlan(plan.id);
       setJoining(false);
-      setJoined(true);
     }, 2000);
   }
 
@@ -701,6 +716,8 @@ function StatCard({ value, label }: { value: string; label: string }) {
 }
 
 function PerfilView() {
+  const { myActivePlans } = useVinku();
+
   return (
     <div className="flex flex-col animate-in fade-in duration-300 pb-6">
       <div
@@ -749,7 +766,7 @@ function PerfilView() {
 
       <div className="px-5 mb-6">
         <div className="grid grid-cols-3 gap-3">
-          <StatCard value="23" label="Parches asistidos" />
+          <StatCard value={String(23 + myActivePlans.length)} label="Parches asistidos" />
           <StatCard value="47" label="Amigos conectados" />
           <StatCard value="4.9" label="Rating comunidad" />
         </div>
