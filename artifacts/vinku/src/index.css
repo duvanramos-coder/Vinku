@@ -256,3 +256,18 @@ html, body {
   overflow-x: hidden;
   max-width: 100vw;
 }
+
+/* ─── html5-qrcode camera feed overrides ─── */
+#qr-camera-feed video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 16px;
+  display: block !important;
+}
+#qr-camera-feed canvas {
+  display: none !important;
+}
+#qr-camera-feed img {
+  display: none !important;
+}

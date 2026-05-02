@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import {
   Home as HomeIcon,
   CalendarDays,
@@ -20,6 +20,8 @@ import {
   HelpCircle,
   ChevronRight,
   Info,
+  Check,
+  BadgePercent,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
@@ -104,10 +106,12 @@ type VinkuState = {
   planes: Plan[];
   selectedPlan: Plan | null;
   myActivePlans: Plan[];
+  discountsActivated: number;
   selectPlan: (plan: Plan) => void;
   clearPlan: () => void;
   joinPlan: (id: number) => void;
   isJoined: (id: number) => boolean;
+  activateDiscount: () => void;
 };
 
 const VinkuContext = createContext<VinkuState | null>(null);
@@ -122,6 +126,7 @@ function VinkuProvider({ children }: { children: React.ReactNode }) {
   const [planes, setPlanes] = useState<Plan[]>(INITIAL_PLANES);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [myActivePlans, setMyActivePlans] = useState<Plan[]>([]);
+  const [discountsActivated, setDiscountsActivated] = useState(0);
 
   function selectPlan(plan: Plan) {
     const fresh = planes.find((p) => p.id === plan.id) ?? plan;
@@ -158,9 +163,16 @@ function VinkuProvider({ children }: { children: React.ReactNode }) {
     });
   }
 
+  function activateDiscount() {
+    setDiscountsActivated((n) => n + 1);
+  }
+
   return (
     <VinkuContext.Provider
-      value={{ planes, selectedPlan, myActivePlans, selectPlan, clearPlan, joinPlan, isJoined }}
+      value={{
+        planes, selectedPlan, myActivePlans, discountsActivated,
+        selectPlan, clearPlan, joinPlan, isJoined, activateDiscount,
+      }}
     >
       {children}
     </VinkuContext.Provider>
@@ -594,12 +606,164 @@ function PlanEmpty({ onGoInicio }: { onGoInicio: () => void }) {
 }
 
 /* ─── Escanear View ─── */
-function EscanearView({ onCancel }: { onCancel: () => void }) {
+/* ─── Discount Success Modal ─── */
+function DiscountModal({ onClose }: { onClose: () => void }) {
   return (
     <div
-      className="flex flex-col items-center justify-between animate-in fade-in duration-300"
-      style={{ minHeight: "calc(100dvh - 88px)", background: "#000" }}
+      className="fixed inset-0 z-[9999] flex items-end justify-center pb-28 px-5"
+      style={{ background: "rgba(0,0,0,0.88)" }}
     >
+      <div
+        className="w-full max-w-[380px] rounded-3xl p-7 flex flex-col items-center gap-5 animate-in zoom-in-90 slide-in-from-bottom-8 duration-400"
+        style={{
+          background: "linear-gradient(160deg, #111118 0%, #0d0d14 100%)",
+          border: "1px solid rgba(99,102,241,0.35)",
+          boxShadow: "0 0 60px rgba(99,102,241,0.25), 0 24px 48px rgba(0,0,0,0.6)",
+        }}
+      >
+        {/* Success ring + check */}
+        <div className="relative flex items-center justify-center">
+          <div
+            className="w-24 h-24 rounded-full flex items-center justify-center"
+            style={{
+              background: "linear-gradient(135deg, #10b981 0%, #34d399 100%)",
+              boxShadow: "0 0 0 8px rgba(16,185,129,0.12), 0 0 40px rgba(16,185,129,0.4)",
+            }}
+          >
+            <Check className="w-12 h-12 text-white" strokeWidth={2.5} />
+          </div>
+        </div>
+
+        {/* Text content */}
+        <div className="text-center">
+          <p className="text-[10px] text-primary/70 uppercase tracking-widest font-bold mb-1">
+            ¡Beneficio Vinku Activado!
+          </p>
+          <h3 className="text-3xl font-bold text-white mb-1">15% DTO.</h3>
+          <p className="text-muted-foreground text-sm">en tu cuenta esta noche</p>
+        </div>
+
+        {/* Promo code pill */}
+        <div
+          className="w-full flex items-center justify-center gap-2 py-3.5 px-5 rounded-2xl"
+          style={{
+            background: "rgba(99,102,241,0.12)",
+            border: "1px solid rgba(99,102,241,0.28)",
+          }}
+        >
+          <BadgePercent className="w-4 h-4 text-primary shrink-0" />
+          <span className="text-primary font-mono font-bold text-lg tracking-[0.18em]">
+            VINKU-15
+          </span>
+        </div>
+
+        <p className="text-muted-foreground/60 text-xs text-center leading-relaxed">
+          Muéstrale esta pantalla al mesero al momento de pagar.
+        </p>
+
+        {/* CTA */}
+        <button
+          onClick={onClose}
+          className="w-full py-4 rounded-2xl font-bold text-white text-sm tracking-wide active:scale-[0.97] transition-all"
+          style={{
+            background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+            boxShadow: "0 0 20px rgba(16,185,129,0.35)",
+          }}
+        >
+          ¡Genial, gracias!
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Corner Markers (reusable overlay) ─── */
+function ViewfinderCorners() {
+  return (
+    <>
+      <svg className="absolute top-0 left-0 z-10" width="36" height="36" viewBox="0 0 36 36" fill="none"
+        style={{ animation: "corner-pulse 2.4s ease-in-out infinite" }}>
+        <path d="M2 18 L2 2 L18 2" stroke="#6366f1" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"
+          style={{ filter: "drop-shadow(0 0 6px #6366f1)" }} />
+      </svg>
+      <svg className="absolute top-0 right-0 z-10" width="36" height="36" viewBox="0 0 36 36" fill="none"
+        style={{ animation: "corner-pulse 2.4s ease-in-out infinite 0.6s" }}>
+        <path d="M34 18 L34 2 L18 2" stroke="#6366f1" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"
+          style={{ filter: "drop-shadow(0 0 6px #6366f1)" }} />
+      </svg>
+      <svg className="absolute bottom-0 left-0 z-10" width="36" height="36" viewBox="0 0 36 36" fill="none"
+        style={{ animation: "corner-pulse 2.4s ease-in-out infinite 1.2s" }}>
+        <path d="M2 18 L2 34 L18 34" stroke="#6366f1" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"
+          style={{ filter: "drop-shadow(0 0 6px #6366f1)" }} />
+      </svg>
+      <svg className="absolute bottom-0 right-0 z-10" width="36" height="36" viewBox="0 0 36 36" fill="none"
+        style={{ animation: "corner-pulse 2.4s ease-in-out infinite 1.8s" }}>
+        <path d="M34 18 L34 34 L18 34" stroke="#6366f1" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"
+          style={{ filter: "drop-shadow(0 0 6px #6366f1)" }} />
+      </svg>
+    </>
+  );
+}
+
+/* ─── Escanear View ─── */
+type ScanStatus = "requesting" | "scanning" | "error" | "success";
+
+function EscanearView({ onCancel }: { onCancel: () => void }) {
+  const { activateDiscount } = useVinku();
+  const [status, setStatus] = useState<ScanStatus>("requesting");
+  const [showModal, setShowModal] = useState(false);
+  const scannerRef = useRef<import("html5-qrcode").Html5Qrcode | null>(null);
+  const hasScanned = useRef(false);
+
+  function triggerSuccess() {
+    if (hasScanned.current) return;
+    hasScanned.current = true;
+    activateDiscount();
+    setStatus("success");
+    setShowModal(true);
+  }
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function startScanner() {
+      try {
+        const { Html5Qrcode } = await import("html5-qrcode");
+        const qr = new Html5Qrcode("qr-camera-feed");
+        scannerRef.current = qr;
+
+        await qr.start(
+          { facingMode: "environment" },
+          { fps: 10, disableFlip: false },
+          (_decoded: string) => {
+            if (mounted) triggerSuccess();
+          },
+          () => {}
+        );
+
+        if (mounted) setStatus("scanning");
+      } catch {
+        if (mounted) setStatus("error");
+      }
+    }
+
+    startScanner();
+
+    return () => {
+      mounted = false;
+      if (scannerRef.current?.isScanning) {
+        scannerRef.current.stop().catch(() => {});
+      }
+    };
+  }, []);
+
+  function handleModalClose() {
+    setShowModal(false);
+    onCancel();
+  }
+
+  return (
+    <>
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes laser-sweep {
           0%   { top: 0px; opacity: 1; }
@@ -614,78 +778,118 @@ function EscanearView({ onCancel }: { onCancel: () => void }) {
         }
       ` }} />
 
-      <div className="flex flex-col items-center pt-14 pb-6 px-6 text-center">
-        <p className="text-white/40 text-xs uppercase tracking-widest font-semibold">
-          Vinku · Validar parche
-        </p>
-      </div>
+      {showModal && <DiscountModal onClose={handleModalClose} />}
 
-      <div className="flex flex-col items-center gap-8 flex-1 justify-center w-full px-8">
-        <div className="relative" style={{ width: 260, height: 260 }}>
-          <div
-            className="absolute inset-0 rounded-2xl"
-            style={{ background: "rgba(99,102,241,0.03)", border: "1px solid rgba(99,102,241,0.15)" }}
-          />
-
-          <svg className="absolute top-0 left-0" width="36" height="36" viewBox="0 0 36 36" fill="none"
-            style={{ animation: "corner-pulse 2.4s ease-in-out infinite" }}>
-            <path d="M2 18 L2 2 L18 2" stroke="#6366f1" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"
-              style={{ filter: "drop-shadow(0 0 6px #6366f1)" }} />
-          </svg>
-          <svg className="absolute top-0 right-0" width="36" height="36" viewBox="0 0 36 36" fill="none"
-            style={{ animation: "corner-pulse 2.4s ease-in-out infinite 0.6s" }}>
-            <path d="M34 18 L34 2 L18 2" stroke="#6366f1" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"
-              style={{ filter: "drop-shadow(0 0 6px #6366f1)" }} />
-          </svg>
-          <svg className="absolute bottom-0 left-0" width="36" height="36" viewBox="0 0 36 36" fill="none"
-            style={{ animation: "corner-pulse 2.4s ease-in-out infinite 1.2s" }}>
-            <path d="M2 18 L2 34 L18 34" stroke="#6366f1" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"
-              style={{ filter: "drop-shadow(0 0 6px #6366f1)" }} />
-          </svg>
-          <svg className="absolute bottom-0 right-0" width="36" height="36" viewBox="0 0 36 36" fill="none"
-            style={{ animation: "corner-pulse 2.4s ease-in-out infinite 1.8s" }}>
-            <path d="M34 18 L34 34 L18 34" stroke="#6366f1" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"
-              style={{ filter: "drop-shadow(0 0 6px #6366f1)" }} />
-          </svg>
-
-          <div className="absolute inset-0 overflow-hidden rounded-2xl">
-            <div
-              className="absolute left-0 w-full"
-              style={{
-                height: 3,
-                background: "linear-gradient(90deg, transparent 0%, #818cf8 20%, #a5b4fc 50%, #818cf8 80%, transparent 100%)",
-                boxShadow: "0 0 10px 3px rgba(99,102,241,0.7), 0 0 24px 6px rgba(99,102,241,0.3)",
-                borderRadius: 2,
-                animation: "laser-sweep 2.2s cubic-bezier(0.45,0,0.55,1) infinite",
-              }}
-            />
-          </div>
-
-          <div className="absolute inset-0 flex items-center justify-center">
-            <QrCode className="w-16 h-16" style={{ color: "rgba(99,102,241,0.12)" }} />
-          </div>
+      <div
+        className="flex flex-col items-center justify-between animate-in fade-in duration-300"
+        style={{ minHeight: "calc(100dvh - 88px)", background: "#000" }}
+      >
+        {/* Header */}
+        <div className="flex flex-col items-center pt-14 pb-4 px-6 text-center">
+          <p className="text-white/40 text-xs uppercase tracking-widest font-semibold">
+            Vinku · Validar parche
+          </p>
+          {status === "scanning" && (
+            <p className="text-primary/60 text-xs mt-1.5 animate-in fade-in duration-500">
+              Apunta al código QR de tu mesa
+            </p>
+          )}
+          {status === "requesting" && (
+            <p className="text-white/30 text-xs mt-1.5">Solicitando acceso a la cámara...</p>
+          )}
+          {status === "error" && (
+            <p className="text-amber-400/70 text-xs mt-1.5">Cámara no disponible</p>
+          )}
         </div>
 
-        <p className="text-white/60 text-sm text-center leading-relaxed max-w-[220px]">
-          Escanea el código de tu mesa para validar tu parche y obtener tu descuento.
-        </p>
-      </div>
+        {/* Viewfinder area */}
+        <div className="flex flex-col items-center gap-8 flex-1 justify-center w-full px-8">
+          <div className="relative" style={{ width: 260, height: 260 }}>
 
-      <div className="pb-8 px-8 w-full">
-        <button
-          onClick={onCancel}
-          className="w-full py-4 rounded-2xl font-semibold text-sm tracking-wide transition-all duration-200 active:scale-[0.97]"
-          style={{
-            background: "rgba(255,255,255,0.06)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            color: "rgba(255,255,255,0.7)",
-          }}
-          data-testid="btn-cancelar-scan"
-        >
-          Cancelar
-        </button>
+            {/* Camera feed div (html5-qrcode target) — shown when not error */}
+            {status !== "error" && (
+              <div
+                id="qr-camera-feed"
+                className="absolute inset-0 rounded-2xl overflow-hidden bg-[#0a0a0c]"
+              />
+            )}
+
+            {/* Ghost QR icon — shown only in error/requesting state */}
+            {(status === "error" || status === "requesting") && (
+              <div
+                className="absolute inset-0 rounded-2xl flex items-center justify-center"
+                style={{ background: "rgba(99,102,241,0.03)", border: "1px solid rgba(99,102,241,0.15)" }}
+              >
+                <QrCode className="w-16 h-16" style={{ color: "rgba(99,102,241,0.12)" }} />
+              </div>
+            )}
+
+            {/* Corner markers — always visible */}
+            <ViewfinderCorners />
+
+            {/* Laser sweep — only when actively scanning */}
+            {status === "scanning" && (
+              <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none z-10">
+                <div
+                  className="absolute left-0 w-full"
+                  style={{
+                    height: 3,
+                    background: "linear-gradient(90deg, transparent 0%, #818cf8 20%, #a5b4fc 50%, #818cf8 80%, transparent 100%)",
+                    boxShadow: "0 0 10px 3px rgba(99,102,241,0.7), 0 0 24px 6px rgba(99,102,241,0.3)",
+                    borderRadius: 2,
+                    animation: "laser-sweep 2.2s cubic-bezier(0.45,0,0.55,1) infinite",
+                  }}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Instruction / fallback */}
+          {status === "error" ? (
+            <div className="flex flex-col items-center gap-4 text-center">
+              <p className="text-white/40 text-sm leading-relaxed max-w-[240px]">
+                No fue posible acceder a la cámara.<br />
+                Puedes simular el escaneo para probar la funcionalidad.
+              </p>
+              <button
+                onClick={triggerSuccess}
+                className="flex items-center gap-2 px-5 py-3 rounded-2xl font-semibold text-sm text-white active:scale-[0.97] transition-all"
+                style={{
+                  background: "linear-gradient(135deg, rgba(99,102,241,0.3), rgba(99,102,241,0.15))",
+                  border: "1px solid rgba(99,102,241,0.4)",
+                }}
+                data-testid="btn-simular-scan"
+              >
+                <QrCode className="w-4 h-4 text-primary" />
+                Simular escaneo exitoso
+              </button>
+            </div>
+          ) : (
+            <p className="text-white/50 text-sm text-center leading-relaxed max-w-[220px]">
+              {status === "success"
+                ? "¡Código detectado!"
+                : "Escanea el código QR de tu mesa para activar tu descuento Vinku."}
+            </p>
+          )}
+        </div>
+
+        {/* Cancel */}
+        <div className="pb-8 px-8 w-full">
+          <button
+            onClick={onCancel}
+            className="w-full py-4 rounded-2xl font-semibold text-sm tracking-wide transition-all duration-200 active:scale-[0.97]"
+            style={{
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              color: "rgba(255,255,255,0.7)",
+            }}
+            data-testid="btn-cancelar-scan"
+          >
+            Cancelar
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -768,7 +972,7 @@ function PerfilView() {
         <div className="grid grid-cols-3 gap-3">
           <StatCard value={String(23 + myActivePlans.length)} label="Parches asistidos" />
           <StatCard value="47" label="Amigos conectados" />
-          <StatCard value="4.9" label="Rating comunidad" />
+          <StatCard value={String(discountsActivated)} label="Descuentos activados" />
         </div>
       </div>
 
