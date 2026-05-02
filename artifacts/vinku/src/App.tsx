@@ -38,6 +38,7 @@ type Tab = "inicio" | "plan" | "escanear" | "perfil";
 type Plan = {
   id: number;
   title: string;
+  category: "Salsa" | "Cerveza" | "Rooftop" | "Electrónica";
   description: string;
   location: string;
   date: string;
@@ -57,6 +58,7 @@ const INITIAL_PLANES: Plan[] = [
   {
     id: 1,
     title: "La Troja Montería",
+    category: "Salsa",
     description:
       "La noche más emblemática del centro. Música en vivo, cócteles artesanales y un ambiente que no para hasta el amanecer. Ven con tu crew y vive la experiencia Troja.",
     location: "Calle 41 #3-15, Montería",
@@ -71,6 +73,7 @@ const INITIAL_PLANES: Plan[] = [
   {
     id: 2,
     title: "Parche El Patio",
+    category: "Cerveza",
     description:
       "El spot secreto de la ciudad. Terraza descubierta, DJ en vivo y las mejores cervezas artesanales de Córdoba. Cupos muy limitados — llega temprano.",
     location: "Carrera 5 #22-10, Montería",
@@ -85,6 +88,7 @@ const INITIAL_PLANES: Plan[] = [
   {
     id: 3,
     title: "Cócteles Sinú",
+    category: "Rooftop",
     description:
       "Una noche sofisticada a orillas del Sinú. Carta de mixología premium, música lounge y vista al río. El plan perfecto para empezar la noche con estilo.",
     location: "Av. Circunvalar #29, Montería",
@@ -209,12 +213,16 @@ function createPlanIcon(isLow: boolean) {
   });
 }
 
-function InteractiveMap({ onSelectPlan }: { onSelectPlan: (plan: Plan) => void }) {
-  const { planes } = useVinku();
+function InteractiveMap({
+  onSelectPlan,
+  planes,
+}: {
+  onSelectPlan: (plan: Plan) => void;
+  planes: Plan[];
+}) {
 
   return (
-    <div className="relative w-full overflow-hidden rounded-2xl" style={{ height: 210 }}>
-      {/* Search bar overlay — above map */}
+      <div className="relative w-full overflow-hidden rounded-2xl" style={{ height: 210 }}>
       <div className="absolute top-3 left-3 right-3 z-[1000] pointer-events-none">
         <div className="flex items-center gap-2 bg-[#0f0f18]/90 backdrop-blur-md border border-border/60 rounded-xl px-4 py-3 shadow-lg">
           <Search className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -363,8 +371,19 @@ function PlanCard({ plan, onSelect }: { plan: Plan; onSelect: () => void }) {
 ═══════════════════════════════════════════ */
 
 /* ─── Inicio View ─── */
+type PlanCategory = "Todos" | "Salsa" | "Cerveza" | "Rooftop" | "Electrónica";
+
 function InicioView({ onSelectPlan }: { onSelectPlan: (plan: Plan) => void }) {
   const { planes } = useVinku();
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState<PlanCategory>("Todos");
+  const filteredPlanes = planes.filter((plan) => {
+    const q = search.trim().toLowerCase();
+    const matchesSearch =
+      q.length === 0 || plan.title.toLowerCase().includes(q) || plan.location.toLowerCase().includes(q);
+    const matchesCategory = category === "Todos" || plan.category === category;
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <div className="flex flex-col animate-in fade-in duration-300">
@@ -386,14 +405,42 @@ function InicioView({ onSelectPlan }: { onSelectPlan: (plan: Plan) => void }) {
         </div>
       </div>
 
+      <div className="px-4 mb-4">
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar plan o ubicación"
+            className="w-full h-12 rounded-2xl bg-card border border-border/60 pl-11 pr-4 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+        </div>
+        <div className="flex gap-2 overflow-x-auto no-scrollbar mt-3 pb-1">
+          {(["Todos", "Salsa", "Cerveza", "Rooftop", "Electrónica"] as PlanCategory[]).map((item) => (
+            <button
+              key={item}
+              onClick={() => setCategory(item)}
+              className={cn(
+                "shrink-0 px-4 py-2 rounded-full text-xs font-semibold border transition-colors",
+                category === item
+                  ? "bg-primary text-white border-primary"
+                  : "bg-card text-muted-foreground border-border/60"
+              )}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="px-4 mb-5">
-        <InteractiveMap onSelectPlan={onSelectPlan} />
+        <InteractiveMap onSelectPlan={onSelectPlan} planes={filteredPlanes} />
       </div>
 
       <div className="px-4 pb-4">
         <h2 className="text-white font-semibold text-base mb-3">Cerca de ti</h2>
         <div className="flex flex-col gap-4">
-          {planes.map((plan) => (
+          {filteredPlanes.map((plan) => (
             <PlanCard key={plan.id} plan={plan} onSelect={() => onSelectPlan(plan)} />
           ))}
         </div>
