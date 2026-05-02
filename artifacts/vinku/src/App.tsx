@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useState } from "react";
+import { createContext, useContext, useState } from "react";
 import {
   Home as HomeIcon,
   CalendarDays,
@@ -19,56 +19,139 @@ import {
   History,
   HelpCircle,
   ChevronRight,
+  Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const queryClient = new QueryClient();
 
+/* ═══════════════════════════════════════════
+   TYPES
+═══════════════════════════════════════════ */
+
 type Tab = "inicio" | "plan" | "escanear" | "perfil";
 
-type Parche = {
+type Plan = {
   id: number;
   title: string;
+  description: string;
   location: string;
   date: string;
   time: string;
-  cupos: number;
+  totalCupos: number;
+  availableCupos: number;
   image: string;
-  avatarSeeds: string[];
+  coordinates: { lat: number; lng: number };
+  confirmedAttendees: string[];
 };
 
-const PARCHES: Parche[] = [
+/* ═══════════════════════════════════════════
+   INITIAL DATA
+═══════════════════════════════════════════ */
+
+const INITIAL_PLANES: Plan[] = [
   {
     id: 1,
     title: "La Troja Montería",
+    description:
+      "La noche más emblemática del centro. Música en vivo, cócteles artesanales y un ambiente que no para hasta el amanecer. Ven con tu crew y vive la experiencia Troja.",
     location: "Calle 41 #3-15, Montería",
     date: "Sábado, 3 de mayo",
     time: "10:00 PM",
-    cupos: 8,
+    totalCupos: 30,
+    availableCupos: 8,
     image: "https://images.unsplash.com/photo-1566417713940-fe7c737a9ef2?w=600&q=80",
-    avatarSeeds: ["Felix", "Aneka", "Mia"],
+    coordinates: { lat: 8.7479, lng: -75.8814 },
+    confirmedAttendees: ["Felix", "Aneka", "Mia"],
   },
   {
     id: 2,
     title: "Parche El Patio",
+    description:
+      "El spot secreto de la ciudad. Terraza descubierta, DJ en vivo y las mejores cervezas artesanales de Córdoba. Cupos muy limitados — llega temprano.",
     location: "Carrera 5 #22-10, Montería",
     date: "Viernes, 2 de mayo",
     time: "9:00 PM",
-    cupos: 4,
+    totalCupos: 20,
+    availableCupos: 4,
     image: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&q=80",
-    avatarSeeds: ["Sara", "Luis", "Tomas", "Camila"],
+    coordinates: { lat: 8.7551, lng: -75.8762 },
+    confirmedAttendees: ["Sara", "Luis", "Tomas", "Camila"],
   },
   {
     id: 3,
     title: "Cócteles Sinú",
+    description:
+      "Una noche sofisticada a orillas del Sinú. Carta de mixología premium, música lounge y vista al río. El plan perfecto para empezar la noche con estilo.",
     location: "Av. Circunvalar #29, Montería",
     date: "Sábado, 3 de mayo",
     time: "8:30 PM",
-    cupos: 12,
+    totalCupos: 25,
+    availableCupos: 12,
     image: "https://images.unsplash.com/photo-1551538827-9c037cb4f32a?w=600&q=80",
-    avatarSeeds: ["Ana", "Jorge"],
+    coordinates: { lat: 8.7432, lng: -75.8891 },
+    confirmedAttendees: ["Ana", "Jorge"],
   },
 ];
+
+/* ═══════════════════════════════════════════
+   GLOBAL STATE — VinkuContext
+═══════════════════════════════════════════ */
+
+type VinkuState = {
+  planes: Plan[];
+  selectedPlan: Plan | null;
+  selectPlan: (plan: Plan) => void;
+  clearPlan: () => void;
+  joinPlan: (id: number) => void;
+};
+
+const VinkuContext = createContext<VinkuState | null>(null);
+
+function useVinku(): VinkuState {
+  const ctx = useContext(VinkuContext);
+  if (!ctx) throw new Error("useVinku must be used inside VinkuProvider");
+  return ctx;
+}
+
+function VinkuProvider({ children }: { children: React.ReactNode }) {
+  const [planes, setPlanes] = useState<Plan[]>(INITIAL_PLANES);
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+
+  function selectPlan(plan: Plan) {
+    const fresh = planes.find((p) => p.id === plan.id) ?? plan;
+    setSelectedPlan(fresh);
+  }
+
+  function clearPlan() {
+    setSelectedPlan(null);
+  }
+
+  function joinPlan(id: number) {
+    setPlanes((prev) =>
+      prev.map((p) =>
+        p.id === id && p.availableCupos > 0
+          ? { ...p, availableCupos: p.availableCupos - 1 }
+          : p
+      )
+    );
+    setSelectedPlan((prev) =>
+      prev?.id === id && prev.availableCupos > 0
+        ? { ...prev, availableCupos: prev.availableCupos - 1 }
+        : prev
+    );
+  }
+
+  return (
+    <VinkuContext.Provider value={{ planes, selectedPlan, selectPlan, clearPlan, joinPlan }}>
+      {children}
+    </VinkuContext.Provider>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   UI HELPERS
+═══════════════════════════════════════════ */
 
 /* ─── Simulated Map ─── */
 function SimulatedMap() {
@@ -154,36 +237,76 @@ function AvatarStack({ seeds }: { seeds: string[] }) {
   );
 }
 
-/* ─── Parche Card (clickable) ─── */
-function ParcheCard({ parche, onSelect }: { parche: Parche; onSelect: () => void }) {
+/* ─── Cupos Progress Bar ─── */
+function CuposBar({ available, total }: { available: number; total: number }) {
+  const pct = Math.max(0, Math.min(100, ((total - available) / total) * 100));
+  const isLow = available <= 5;
+  return (
+    <div className="w-full">
+      <div className="flex justify-between items-center mb-1.5">
+        <span className="text-xs text-muted-foreground font-medium">
+          {total - available} de {total} asistentes confirmados
+        </span>
+        <span
+          className={cn("text-xs font-bold", isLow ? "text-amber-400" : "text-emerald-400")}
+        >
+          {available} {isLow ? "¡últimos!" : "disponibles"}
+        </span>
+      </div>
+      <div className="w-full h-1.5 rounded-full bg-border/60 overflow-hidden">
+        <div
+          className={cn(
+            "h-full rounded-full transition-all duration-700",
+            isLow
+              ? "bg-gradient-to-r from-amber-500 to-amber-400"
+              : "bg-gradient-to-r from-primary to-indigo-400"
+          )}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ─── Plan Card (clickable) ─── */
+function PlanCard({ plan, onSelect }: { plan: Plan; onSelect: () => void }) {
+  const isLow = plan.availableCupos <= 5;
   return (
     <button
       className="w-full text-left rounded-2xl overflow-hidden bg-card border border-border/60 flex flex-col active:scale-[0.98] transition-transform duration-150"
       onClick={onSelect}
-      data-testid={`card-parche-${parche.id}`}
+      data-testid={`card-plan-${plan.id}`}
     >
       <div className="relative h-44 overflow-hidden">
-        <img src={parche.image} alt={parche.title} className="w-full h-full object-cover" />
+        <img src={plan.image} alt={plan.title} className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
         <div className="absolute top-3 right-3">
-          <span className="flex items-center gap-1 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-xs font-semibold px-2.5 py-1 rounded-full backdrop-blur-sm">
+          <span
+            className={cn(
+              "flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full backdrop-blur-sm border",
+              isLow
+                ? "bg-amber-500/20 border-amber-500/40 text-amber-400"
+                : "bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
+            )}
+          >
             <Users className="w-3 h-3" />
-            {parche.cupos} cupos
+            {plan.availableCupos} cupos
           </span>
         </div>
       </div>
       <div className="p-4">
-        <h3 className="text-white font-semibold text-base mb-1 leading-tight">{parche.title}</h3>
+        <h3 className="text-white font-semibold text-base mb-1 leading-tight">{plan.title}</h3>
         <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
           <MapPin className="w-3 h-3 shrink-0" />
-          <span className="truncate">{parche.location}</span>
+          <span className="truncate">{plan.location}</span>
         </div>
-        <div className="flex items-center gap-1 text-muted-foreground text-xs mb-4">
+        <div className="flex items-center gap-1 text-muted-foreground text-xs mb-3">
           <Clock className="w-3 h-3 shrink-0" />
-          <span>Desde las {parche.time}</span>
+          <span>Desde las {plan.time}</span>
         </div>
-        <div className="flex items-center justify-between">
-          <AvatarStack seeds={parche.avatarSeeds} />
+        <CuposBar available={plan.availableCupos} total={plan.totalCupos} />
+        <div className="flex items-center justify-between mt-3">
+          <AvatarStack seeds={plan.confirmedAttendees} />
           <span className="bg-primary/15 border border-primary/30 text-primary text-xs font-semibold px-4 py-2 rounded-full">
             Ver plan
           </span>
@@ -193,8 +316,14 @@ function ParcheCard({ parche, onSelect }: { parche: Parche; onSelect: () => void
   );
 }
 
+/* ═══════════════════════════════════════════
+   VIEWS
+═══════════════════════════════════════════ */
+
 /* ─── Inicio View ─── */
-function InicioView({ onSelectParche }: { onSelectParche: (p: Parche) => void }) {
+function InicioView() {
+  const { planes, selectPlan } = useVinku();
+
   return (
     <div className="flex flex-col animate-in fade-in duration-300">
       <div className="flex items-center justify-between px-5 pt-12 pb-4">
@@ -222,8 +351,8 @@ function InicioView({ onSelectParche }: { onSelectParche: (p: Parche) => void })
       <div className="px-4 pb-4">
         <h2 className="text-white font-semibold text-base mb-3">Cerca de ti</h2>
         <div className="flex flex-col gap-4">
-          {PARCHES.map((parche) => (
-            <ParcheCard key={parche.id} parche={parche} onSelect={() => onSelectParche(parche)} />
+          {planes.map((plan) => (
+            <PlanCard key={plan.id} plan={plan} onSelect={() => selectPlan(plan)} />
           ))}
         </div>
       </div>
@@ -232,24 +361,33 @@ function InicioView({ onSelectParche }: { onSelectParche: (p: Parche) => void })
 }
 
 /* ─── Plan Detail View ─── */
-function PlanView({ parche, onBack }: { parche: Parche; onBack: () => void }) {
+function PlanView({ onBack }: { onBack: () => void }) {
+  const { selectedPlan, joinPlan } = useVinku();
   const [joining, setJoining] = useState(false);
+  const [joined, setJoined] = useState(false);
+
+  if (!selectedPlan) return null;
+
+  const plan = selectedPlan;
+  const isLow = plan.availableCupos <= 5;
 
   function handleJoin() {
-    if (joining) return;
+    if (joining || joined || plan.availableCupos === 0) return;
     setJoining(true);
-    setTimeout(() => setJoining(false), 2000);
+    setTimeout(() => {
+      joinPlan(plan.id);
+      setJoining(false);
+      setJoined(true);
+    }, 2000);
   }
 
   return (
     <div className="flex flex-col min-h-full animate-in fade-in duration-300">
-      {/* Hero Image — 40% of viewport height */}
+      {/* Hero Image */}
       <div className="relative w-full" style={{ height: "40dvh" }}>
-        <img src={parche.image} alt={parche.title} className="w-full h-full object-cover" />
-        {/* Dark overlay */}
+        <img src={plan.image} alt={plan.title} className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/30" />
 
-        {/* Floating back button */}
         <button
           onClick={onBack}
           className="absolute top-12 left-4 w-10 h-10 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/70 transition-colors"
@@ -258,24 +396,34 @@ function PlanView({ parche, onBack }: { parche: Parche; onBack: () => void }) {
           <ArrowLeft className="w-5 h-5" />
         </button>
 
-        {/* Cupos badge on hero */}
         <div className="absolute top-12 right-4">
-          <span className="flex items-center gap-1 bg-emerald-500/25 border border-emerald-500/40 text-emerald-400 text-xs font-semibold px-3 py-1.5 rounded-full backdrop-blur-sm">
+          <span
+            className={cn(
+              "flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full backdrop-blur-sm border",
+              isLow
+                ? "bg-amber-500/25 border-amber-500/40 text-amber-400"
+                : "bg-emerald-500/25 border-emerald-500/40 text-emerald-400"
+            )}
+          >
             <Users className="w-3 h-3" />
-            {parche.cupos} cupos
+            {plan.availableCupos} cupos
           </span>
         </div>
       </div>
 
-      {/* Detail card — overlaps hero */}
+      {/* Detail card */}
       <div
         className="relative z-10 flex-1 bg-background rounded-t-3xl -mt-6 px-5 pt-6 pb-32 flex flex-col gap-5"
         style={{ boxShadow: "0 -8px 32px rgba(0,0,0,0.6)" }}
       >
-        {/* Title + meta */}
+        {/* Title */}
         <div>
-          <h2 className="text-2xl font-bold text-white leading-tight mb-4">{parche.title}</h2>
+          <h2 className="text-2xl font-bold text-white leading-tight mb-3">{plan.title}</h2>
 
+          {/* Description */}
+          <p className="text-sm text-muted-foreground leading-relaxed mb-4">{plan.description}</p>
+
+          {/* Meta rows */}
           <div className="flex flex-col gap-2.5">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
@@ -283,7 +431,7 @@ function PlanView({ parche, onBack }: { parche: Parche; onBack: () => void }) {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Fecha</p>
-                <p className="text-sm text-white font-medium">{parche.date}</p>
+                <p className="text-sm text-white font-medium">{plan.date}</p>
               </div>
             </div>
 
@@ -293,7 +441,7 @@ function PlanView({ parche, onBack }: { parche: Parche; onBack: () => void }) {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Hora</p>
-                <p className="text-sm text-white font-medium">Desde las {parche.time}</p>
+                <p className="text-sm text-white font-medium">Desde las {plan.time}</p>
               </div>
             </div>
 
@@ -303,24 +451,33 @@ function PlanView({ parche, onBack }: { parche: Parche; onBack: () => void }) {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Ubicación</p>
-                <p className="text-sm text-white font-medium">{parche.location}</p>
+                <p className="text-sm text-white font-medium">{plan.location}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                <Info className="w-4 h-4 text-primary" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-2">Capacidad</p>
+                <CuposBar available={plan.availableCupos} total={plan.totalCupos} />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Separator */}
         <div className="h-px bg-border/60" />
 
         {/* Quiénes van */}
         <div>
           <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-3">
-            Ya van {parche.avatarSeeds.length} personas
+            Ya van {plan.confirmedAttendees.length} persona{plan.confirmedAttendees.length !== 1 ? "s" : ""}
           </p>
-          <AvatarStack seeds={parche.avatarSeeds} />
+          <AvatarStack seeds={plan.confirmedAttendees} />
         </div>
 
-        {/* Beneficio Vinku card */}
+        {/* Beneficio Vinku */}
         <div
           className="rounded-2xl p-4 flex items-center gap-4 relative overflow-hidden"
           style={{
@@ -328,7 +485,6 @@ function PlanView({ parche, onBack }: { parche: Parche; onBack: () => void }) {
             border: "1px solid rgba(99,102,241,0.35)",
           }}
         >
-          {/* Glow blob */}
           <div
             className="absolute -right-4 -top-4 w-24 h-24 rounded-full"
             style={{ background: "radial-gradient(circle, rgba(99,102,241,0.3) 0%, transparent 70%)" }}
@@ -340,30 +496,28 @@ function PlanView({ parche, onBack }: { parche: Parche; onBack: () => void }) {
             <p className="text-[10px] text-primary/70 uppercase tracking-widest font-semibold mb-0.5">
               Exclusivo Vinku
             </p>
-            <p className="text-white font-semibold text-sm leading-snug">
-              15% DTO. en la cuenta
-            </p>
-            <p className="text-muted-foreground text-xs mt-0.5">
-              Muestra tu QR Vinku al pagar
-            </p>
+            <p className="text-white font-semibold text-sm leading-snug">15% DTO. en la cuenta</p>
+            <p className="text-muted-foreground text-xs mt-0.5">Muestra tu QR Vinku al pagar</p>
           </div>
         </div>
       </div>
 
-      {/* Join button — fixed at bottom inside the scroll container */}
+      {/* Join button */}
       <div className="fixed bottom-[88px] left-1/2 -translate-x-1/2 w-full max-w-[428px] px-5 pb-3 z-20 pointer-events-none">
         <div className="pointer-events-auto">
           <button
             onClick={handleJoin}
-            disabled={joining}
+            disabled={joining || joined || plan.availableCupos === 0}
             className={cn(
               "w-full py-4 rounded-2xl font-bold text-base tracking-wide transition-all duration-300 flex items-center justify-center gap-2",
-              joining
+              joined
+                ? "bg-emerald-600/80 text-white cursor-default"
+                : joining || plan.availableCupos === 0
                 ? "bg-primary/40 text-primary/70 cursor-not-allowed"
                 : "text-white shadow-[0_0_24px_rgba(99,102,241,0.45)] hover:shadow-[0_0_32px_rgba(99,102,241,0.65)] active:scale-[0.98]"
             )}
             style={
-              joining
+              joined || joining || plan.availableCupos === 0
                 ? {}
                 : { background: "linear-gradient(135deg, #6366f1 0%, #818cf8 100%)" }
             }
@@ -374,6 +528,10 @@ function PlanView({ parche, onBack }: { parche: Parche; onBack: () => void }) {
                 <Loader2 className="w-5 h-5 animate-spin" />
                 <span>Uniéndose al plan...</span>
               </>
+            ) : joined ? (
+              "¡Ya eres parte del plan! 🎉"
+            ) : plan.availableCupos === 0 ? (
+              "Sin cupos disponibles"
             ) : (
               "¡ME UNO AL PLAN!"
             )}
@@ -384,7 +542,7 @@ function PlanView({ parche, onBack }: { parche: Parche; onBack: () => void }) {
   );
 }
 
-/* ─── Placeholder Plan (when no parche selected) ─── */
+/* ─── Placeholder Plan (empty) ─── */
 function PlanEmpty({ onGoInicio }: { onGoInicio: () => void }) {
   return (
     <div className="flex flex-col h-full p-6 animate-in fade-in zoom-in-95 duration-300">
@@ -427,52 +585,40 @@ function EscanearView({ onCancel }: { onCancel: () => void }) {
         }
       ` }} />
 
-      {/* Top spacer / label */}
       <div className="flex flex-col items-center pt-14 pb-6 px-6 text-center">
         <p className="text-white/40 text-xs uppercase tracking-widest font-semibold">
           Vinku · Validar parche
         </p>
       </div>
 
-      {/* Viewfinder */}
       <div className="flex flex-col items-center gap-8 flex-1 justify-center w-full px-8">
-        {/* Scanner box */}
-        <div
-          className="relative"
-          style={{ width: 260, height: 260 }}
-        >
-          {/* Dark semi-transparent fill */}
+        <div className="relative" style={{ width: 260, height: 260 }}>
           <div
             className="absolute inset-0 rounded-2xl"
             style={{ background: "rgba(99,102,241,0.03)", border: "1px solid rgba(99,102,241,0.15)" }}
           />
 
-          {/* Corner markers — top-left */}
           <svg className="absolute top-0 left-0" width="36" height="36" viewBox="0 0 36 36" fill="none"
             style={{ animation: "corner-pulse 2.4s ease-in-out infinite" }}>
             <path d="M2 18 L2 2 L18 2" stroke="#6366f1" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"
               style={{ filter: "drop-shadow(0 0 6px #6366f1)" }} />
           </svg>
-          {/* Corner markers — top-right */}
           <svg className="absolute top-0 right-0" width="36" height="36" viewBox="0 0 36 36" fill="none"
             style={{ animation: "corner-pulse 2.4s ease-in-out infinite 0.6s" }}>
             <path d="M34 18 L34 2 L18 2" stroke="#6366f1" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"
               style={{ filter: "drop-shadow(0 0 6px #6366f1)" }} />
           </svg>
-          {/* Corner markers — bottom-left */}
           <svg className="absolute bottom-0 left-0" width="36" height="36" viewBox="0 0 36 36" fill="none"
             style={{ animation: "corner-pulse 2.4s ease-in-out infinite 1.2s" }}>
             <path d="M2 18 L2 34 L18 34" stroke="#6366f1" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"
               style={{ filter: "drop-shadow(0 0 6px #6366f1)" }} />
           </svg>
-          {/* Corner markers — bottom-right */}
           <svg className="absolute bottom-0 right-0" width="36" height="36" viewBox="0 0 36 36" fill="none"
             style={{ animation: "corner-pulse 2.4s ease-in-out infinite 1.8s" }}>
             <path d="M34 18 L34 34 L18 34" stroke="#6366f1" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"
               style={{ filter: "drop-shadow(0 0 6px #6366f1)" }} />
           </svg>
 
-          {/* Laser line — contained inside the box */}
           <div className="absolute inset-0 overflow-hidden rounded-2xl">
             <div
               className="absolute left-0 w-full"
@@ -486,19 +632,16 @@ function EscanearView({ onCancel }: { onCancel: () => void }) {
             />
           </div>
 
-          {/* Center QR ghost icon */}
           <div className="absolute inset-0 flex items-center justify-center">
             <QrCode className="w-16 h-16" style={{ color: "rgba(99,102,241,0.12)" }} />
           </div>
         </div>
 
-        {/* Instruction text */}
         <p className="text-white/60 text-sm text-center leading-relaxed max-w-[220px]">
           Escanea el código de tu mesa para validar tu parche y obtener tu descuento.
         </p>
       </div>
 
-      {/* Cancel button */}
       <div className="pb-8 px-8 w-full">
         <button
           onClick={onCancel}
@@ -521,10 +664,10 @@ function EscanearView({ onCancel }: { onCancel: () => void }) {
 const INTERESES = ["Salsa", "Cerveza Artesanal", "Rooftops", "Fútbol", "Electrónica", "Planes Nocturnos"];
 
 const MENU_ITEMS = [
-  { icon: Ticket,      label: "Mis Entradas",   sub: "Ver historial de accesos" },
-  { icon: History,     label: "Historial",       sub: "Parches anteriores" },
-  { icon: Settings,    label: "Ajustes",         sub: "Cuenta y privacidad" },
-  { icon: HelpCircle,  label: "Ayuda",           sub: "Soporte Vinku" },
+  { icon: Ticket,     label: "Mis Entradas", sub: "Ver historial de accesos" },
+  { icon: History,    label: "Historial",    sub: "Parches anteriores" },
+  { icon: Settings,   label: "Ajustes",      sub: "Cuenta y privacidad" },
+  { icon: HelpCircle, label: "Ayuda",        sub: "Soporte Vinku" },
 ];
 
 function StatCard({ value, label }: { value: string; label: string }) {
@@ -546,7 +689,6 @@ function StatCard({ value, label }: { value: string; label: string }) {
 function PerfilView() {
   return (
     <div className="flex flex-col animate-in fade-in duration-300 pb-6">
-      {/* Header banner with subtle gradient */}
       <div
         className="w-full h-28 relative"
         style={{
@@ -554,10 +696,8 @@ function PerfilView() {
         }}
       />
 
-      {/* Avatar — overlaps banner */}
       <div className="px-5 -mt-14 flex items-end justify-between mb-4">
         <div className="relative">
-          {/* Avatar circle */}
           <div
             className="w-24 h-24 rounded-full flex items-center justify-center border-4 border-background"
             style={{
@@ -567,20 +707,18 @@ function PerfilView() {
           >
             <span className="text-3xl font-bold text-white tracking-tight select-none">DR</span>
           </div>
-          {/* Online indicator */}
-          <span className="absolute bottom-1.5 right-1.5 w-4 h-4 rounded-full bg-emerald-500 border-2 border-background block"
+          <span
+            className="absolute bottom-1.5 right-1.5 w-4 h-4 rounded-full bg-emerald-500 border-2 border-background block"
             style={{ boxShadow: "0 0 6px rgba(16,185,129,0.7)" }}
           />
         </div>
 
-        {/* Edit / Settings shortcut */}
         <button className="mt-8 px-4 py-2 rounded-xl border border-border/70 bg-card text-muted-foreground text-xs font-semibold hover:border-primary/40 hover:text-primary transition-colors flex items-center gap-1.5">
           <Settings className="w-3.5 h-3.5" />
           Editar perfil
         </button>
       </div>
 
-      {/* User info */}
       <div className="px-5 mb-5">
         <div className="flex items-center gap-2 mb-0.5">
           <h2 className="text-xl font-bold text-white tracking-tight">Duvan Ramos</h2>
@@ -595,7 +733,6 @@ function PerfilView() {
         </div>
       </div>
 
-      {/* Stats grid */}
       <div className="px-5 mb-6">
         <div className="grid grid-cols-3 gap-3">
           <StatCard value="23" label="Parches asistidos" />
@@ -604,10 +741,8 @@ function PerfilView() {
         </div>
       </div>
 
-      {/* Separator */}
       <div className="mx-5 h-px bg-border/50 mb-5" />
 
-      {/* Interests */}
       <div className="px-5 mb-6">
         <h3 className="text-xs uppercase tracking-widest text-muted-foreground font-semibold mb-3">
           Intereses
@@ -616,7 +751,7 @@ function PerfilView() {
           {INTERESES.map((tag) => (
             <span
               key={tag}
-              className="px-3 py-1.5 rounded-full text-xs font-semibold border"
+              className="px-3 py-1.5 rounded-full text-xs font-semibold"
               style={{
                 background: "rgba(99,102,241,0.1)",
                 border: "1px solid rgba(99,102,241,0.25)",
@@ -629,10 +764,8 @@ function PerfilView() {
         </div>
       </div>
 
-      {/* Separator */}
       <div className="mx-5 h-px bg-border/50 mb-5" />
 
-      {/* Menu items */}
       <div className="px-5 flex flex-col gap-2">
         {MENU_ITEMS.map(({ icon: Icon, label, sub }) => (
           <button
@@ -655,37 +788,66 @@ function PerfilView() {
   );
 }
 
+/* ═══════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════ */
+
+/* ─── Nav Item ─── */
+function NavItem({
+  icon,
+  label,
+  isActive,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex flex-col items-center justify-center w-[64px] gap-1 transition-all duration-150 active:scale-[0.88]",
+        isActive ? "text-primary" : "text-muted-foreground hover:text-foreground/80"
+      )}
+    >
+      <div className={cn("transition-transform duration-200", isActive && "scale-110")}>{icon}</div>
+      <span className="text-[10px] font-medium">{label}</span>
+    </button>
+  );
+}
+
 /* ─── Mobile Layout ─── */
 function MobileLayout() {
+  const { selectedPlan, selectPlan, clearPlan } = useVinku();
   const [activeTab, setActiveTab] = useState<Tab>("inicio");
-  const [selectedParche, setSelectedParche] = useState<Parche | null>(null);
 
-  function handleSelectParche(parche: Parche) {
-    setSelectedParche(parche);
+  function handleSelectPlan(plan: Plan) {
+    selectPlan(plan);
     setActiveTab("plan");
   }
 
   function handleBackFromPlan() {
+    clearPlan();
     setActiveTab("inicio");
-    setSelectedParche(null);
   }
 
   return (
     <div className="min-h-[100dvh] w-full bg-background flex justify-center text-foreground font-sans overflow-x-hidden">
       <div className="w-full max-w-[428px] relative h-[100dvh] overflow-hidden flex flex-col bg-background shadow-2xl">
 
-        {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[88px]">
-          <div key={activeTab + String(selectedParche?.id ?? "")} className="view-enter min-h-full">
+          <div key={activeTab + String(selectedPlan?.id ?? "")} className="view-enter min-h-full">
             {activeTab === "inicio" && (
-              <InicioView onSelectParche={handleSelectParche} />
+              <InicioView />
             )}
 
-            {activeTab === "plan" && selectedParche && (
-              <PlanView parche={selectedParche} onBack={handleBackFromPlan} />
+            {activeTab === "plan" && selectedPlan && (
+              <PlanView onBack={handleBackFromPlan} />
             )}
 
-            {activeTab === "plan" && !selectedParche && (
+            {activeTab === "plan" && !selectedPlan && (
               <PlanEmpty onGoInicio={() => setActiveTab("inicio")} />
             )}
 
@@ -703,7 +865,7 @@ function MobileLayout() {
             icon={<HomeIcon className="w-6 h-6" />}
             label="Inicio"
             isActive={activeTab === "inicio"}
-            onClick={() => { setActiveTab("inicio"); setSelectedParche(null); }}
+            onClick={() => { setActiveTab("inicio"); clearPlan(); }}
           />
           <NavItem
             icon={<CalendarDays className="w-6 h-6" />}
@@ -747,38 +909,23 @@ function MobileLayout() {
   );
 }
 
-/* ─── Nav Item ─── */
-function NavItem({
-  icon,
-  label,
-  isActive,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  isActive: boolean;
-  onClick: () => void;
-}) {
+/* ─── Wrap MobileLayout with context ─── */
+function MobileLayoutWithContext() {
   return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "flex flex-col items-center justify-center w-[64px] gap-1 transition-all duration-150 active:scale-[0.88]",
-        isActive ? "text-primary" : "text-muted-foreground hover:text-foreground/80"
-      )}
-    >
-      <div className={cn("transition-transform duration-200", isActive && "scale-110")}>{icon}</div>
-      <span className="text-[10px] font-medium">{label}</span>
-    </button>
+    <VinkuProvider>
+      <MobileLayout />
+    </VinkuProvider>
   );
 }
 
-/* ─── Root App ─── */
+/* ═══════════════════════════════════════════
+   ROOT
+═══════════════════════════════════════════ */
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <MobileLayout />
+        <MobileLayoutWithContext />
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
