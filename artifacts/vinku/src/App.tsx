@@ -1,15 +1,229 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/not-found";
 import { useState } from "react";
-import { Home as HomeIcon, CalendarDays, QrCode, User } from "lucide-react";
+import { Home as HomeIcon, CalendarDays, QrCode, User, MapPin, Search, Clock, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const queryClient = new QueryClient();
 
 type Tab = "inicio" | "plan" | "escanear" | "perfil";
+
+const PARCHES = [
+  {
+    id: 1,
+    title: "La Troja Montería",
+    location: "Calle 41 #3-15, Montería",
+    time: "10:00 PM",
+    cupos: 8,
+    image: "https://images.unsplash.com/photo-1566417713940-fe7c737a9ef2?w=600&q=80",
+    avatarSeeds: ["Felix", "Aneka", "Mia"],
+  },
+  {
+    id: 2,
+    title: "Parche El Patio",
+    location: "Carrera 5 #22-10, Montería",
+    time: "9:00 PM",
+    cupos: 4,
+    image: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=600&q=80",
+    avatarSeeds: ["Sara", "Luis", "Tomas", "Camila"],
+  },
+  {
+    id: 3,
+    title: "Cócteles Sinú",
+    location: "Av. Circunvalar #29, Montería",
+    time: "8:30 PM",
+    cupos: 12,
+    image: "https://images.unsplash.com/photo-1551538827-9c037cb4f32a?w=600&q=80",
+    avatarSeeds: ["Ana", "Jorge"],
+  },
+];
+
+function SimulatedMap() {
+  const markers = [
+    { cx: 80, cy: 90, label: "La Troja" },
+    { cx: 200, cy: 140, label: "El Patio" },
+    { cx: 310, cy: 80, label: "Sinú" },
+    { cx: 140, cy: 200, label: "Club X" },
+    { cx: 270, cy: 195, label: "Bar Y" },
+  ];
+
+  return (
+    <div className="relative w-full overflow-hidden rounded-2xl" style={{ height: 210 }}>
+      <svg
+        viewBox="0 0 390 210"
+        className="w-full h-full"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        {/* Dark map background */}
+        <rect width="390" height="210" fill="#0d0d11" />
+
+        {/* Grid / block structure */}
+        {[30, 70, 110, 150, 190].map((y) => (
+          <line key={`h${y}`} x1="0" y1={y} x2="390" y2={y} stroke="#1a1a24" strokeWidth="1" />
+        ))}
+        {[50, 100, 150, 200, 250, 300, 350].map((x) => (
+          <line key={`v${x}`} x1={x} y1="0" x2={x} y2="210" stroke="#1a1a24" strokeWidth="1" />
+        ))}
+
+        {/* Main roads */}
+        <path d="M 0 105 Q 100 95 200 105 Q 300 115 390 105" stroke="#22223a" strokeWidth="8" fill="none" />
+        <path d="M 195 0 Q 190 60 200 105 Q 210 150 195 210" stroke="#22223a" strokeWidth="8" fill="none" />
+        <path d="M 0 60 Q 120 55 200 65 Q 280 75 390 65" stroke="#1e1e30" strokeWidth="5" fill="none" />
+        <path d="M 0 155 Q 130 148 200 155 Q 300 162 390 155" stroke="#1e1e30" strokeWidth="5" fill="none" />
+        <path d="M 100 0 Q 95 80 100 210" stroke="#1e1e30" strokeWidth="4" fill="none" />
+        <path d="M 300 0 Q 305 80 300 210" stroke="#1e1e30" strokeWidth="4" fill="none" />
+
+        {/* Block fills */}
+        <rect x="52" y="12" width="44" height="44" rx="3" fill="#13131c" />
+        <rect x="205" y="12" width="90" height="44" rx="3" fill="#13131c" />
+        <rect x="52" y="70" width="44" height="30" rx="3" fill="#13131c" />
+        <rect x="52" y="115" width="44" height="35" rx="3" fill="#13131c" />
+        <rect x="205" y="115" width="90" height="35" rx="3" fill="#13131c" />
+        <rect x="305" y="70" width="82" height="80" rx="3" fill="#13131c" />
+
+        {/* Glowing markers */}
+        {markers.map((m) => (
+          <g key={m.label}>
+            {/* Outer glow ring */}
+            <circle cx={m.cx} cy={m.cy} r="14" fill="rgba(99,102,241,0.08)" />
+            <circle cx={m.cx} cy={m.cy} r="9" fill="rgba(99,102,241,0.15)" />
+            {/* Main dot */}
+            <circle cx={m.cx} cy={m.cy} r="5" fill="#6366f1" style={{ filter: "drop-shadow(0 0 6px #6366f1)" }} />
+            <circle cx={m.cx} cy={m.cy} r="2.5" fill="#a5b4fc" />
+          </g>
+        ))}
+
+        {/* Map edge vignette */}
+        <defs>
+          <radialGradient id="vignette" cx="50%" cy="50%" r="50%">
+            <stop offset="60%" stopColor="transparent" />
+            <stop offset="100%" stopColor="#0a0a0c" />
+          </radialGradient>
+        </defs>
+        <rect width="390" height="210" fill="url(#vignette)" />
+      </svg>
+
+      {/* Search bar overlay */}
+      <div className="absolute top-3 left-3 right-3">
+        <div className="flex items-center gap-2 bg-[#0f0f18]/90 backdrop-blur-md border border-border/60 rounded-xl px-4 py-3 shadow-lg">
+          <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+          <span className="text-muted-foreground text-sm">¿Dónde es el parche hoy?</span>
+        </div>
+      </div>
+
+      {/* Bottom fade into background */}
+      <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+    </div>
+  );
+}
+
+function AvatarStack({ seeds }: { seeds: string[] }) {
+  return (
+    <div className="flex items-center">
+      {seeds.slice(0, 4).map((seed, i) => (
+        <img
+          key={seed}
+          src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc&backgroundType=solid`}
+          alt={seed}
+          className="w-7 h-7 rounded-full border-2 border-background bg-card object-cover"
+          style={{ marginLeft: i === 0 ? 0 : -10, zIndex: seeds.length - i }}
+        />
+      ))}
+      {seeds.length > 4 && (
+        <div
+          className="w-7 h-7 rounded-full border-2 border-background bg-muted flex items-center justify-center text-[9px] font-semibold text-muted-foreground"
+          style={{ marginLeft: -10 }}
+        >
+          +{seeds.length - 4}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ParcheCard({ parche }: { parche: typeof PARCHES[0] }) {
+  return (
+    <div className="rounded-2xl overflow-hidden bg-card border border-border/60 flex flex-col">
+      {/* Image */}
+      <div className="relative h-44 overflow-hidden">
+        <img
+          src={parche.image}
+          alt={parche.title}
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+        {/* Cupos badge */}
+        <div className="absolute top-3 right-3">
+          <span className="flex items-center gap-1 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-xs font-semibold px-2.5 py-1 rounded-full backdrop-blur-sm">
+            <Users className="w-3 h-3" />
+            {parche.cupos} cupos
+          </span>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-4">
+        <h3 className="text-white font-semibold text-base mb-1 leading-tight">{parche.title}</h3>
+        <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
+          <MapPin className="w-3 h-3 shrink-0" />
+          <span className="truncate">{parche.location}</span>
+        </div>
+        <div className="flex items-center gap-1 text-muted-foreground text-xs mb-4">
+          <Clock className="w-3 h-3 shrink-0" />
+          <span>Desde las {parche.time}</span>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <AvatarStack seeds={parche.avatarSeeds} />
+          <button
+            className="bg-primary/15 hover:bg-primary/25 border border-primary/30 text-primary text-xs font-semibold px-4 py-2 rounded-full transition-colors"
+            data-testid={`btn-apuntarse-${parche.id}`}
+          >
+            Apuntarse
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InicioView() {
+  return (
+    <div className="flex flex-col animate-in fade-in duration-300">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 pt-12 pb-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-white leading-none" style={{ textShadow: "0 0 20px rgba(99,102,241,0.5)" }}>
+            Vinku
+          </h1>
+          <div className="flex items-center gap-1 mt-0.5">
+            <MapPin className="w-3.5 h-3.5 text-primary" />
+            <span className="text-muted-foreground text-sm font-medium">Montería</span>
+          </div>
+        </div>
+        <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center">
+          <span className="text-primary font-bold text-sm">V</span>
+        </div>
+      </div>
+
+      {/* Simulated Map */}
+      <div className="px-4 mb-5">
+        <SimulatedMap />
+      </div>
+
+      {/* Feed "Cerca de ti" */}
+      <div className="px-4 pb-4">
+        <h2 className="text-white font-semibold text-base mb-3">Cerca de ti</h2>
+        <div className="flex flex-col gap-4">
+          {PARCHES.map((parche) => (
+            <ParcheCard key={parche.id} parche={parche} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function MobileLayout() {
   const [activeTab, setActiveTab] = useState<Tab>("inicio");
@@ -20,28 +234,7 @@ function MobileLayout() {
         
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto pb-[88px]">
-          {activeTab === "inicio" && (
-            <div className="flex flex-col h-full p-6 animate-in fade-in zoom-in-95 duration-300">
-              <div className="mt-12 flex-1">
-                <h1 className="text-4xl font-bold tracking-tighter text-white mb-4 drop-shadow-[0_0_15px_rgba(99,102,241,0.5)]">
-                  Vinku
-                </h1>
-                <p className="text-muted-foreground text-lg leading-relaxed max-w-[280px]">
-                  Descubre los mejores planes de hoy en la ciudad.
-                </p>
-                <div className="mt-12 space-y-4">
-                  <div className="h-48 rounded-2xl bg-card border border-border flex items-center justify-center relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <span className="text-muted-foreground font-medium">Eventos destacados</span>
-                  </div>
-                  <div className="h-48 rounded-2xl bg-card border border-border flex items-center justify-center relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <span className="text-muted-foreground font-medium">Lugares recomendados</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          {activeTab === "inicio" && <InicioView />}
 
           {activeTab === "plan" && (
             <div className="flex flex-col h-full p-6 animate-in fade-in zoom-in-95 duration-300">
