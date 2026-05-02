@@ -565,7 +565,7 @@ function PerfilView() {
               boxShadow: "0 0 0 1px rgba(99,102,241,0.4), 0 0 24px rgba(99,102,241,0.25)",
             }}
           >
-            <span className="text-3xl font-bold text-white tracking-tight select-none">JP</span>
+            <span className="text-3xl font-bold text-white tracking-tight select-none">DR</span>
           </div>
           {/* Online indicator */}
           <span className="absolute bottom-1.5 right-1.5 w-4 h-4 rounded-full bg-emerald-500 border-2 border-background block"
@@ -583,7 +583,7 @@ function PerfilView() {
       {/* User info */}
       <div className="px-5 mb-5">
         <div className="flex items-center gap-2 mb-0.5">
-          <h2 className="text-xl font-bold text-white tracking-tight">Juan Pablo Ruiz</h2>
+          <h2 className="text-xl font-bold text-white tracking-tight">Duvan Ramos</h2>
           <span className="text-muted-foreground text-sm">· 24</span>
         </div>
         <div className="flex items-center gap-1.5">
