@@ -920,10 +920,11 @@ function StatCard({ value, label }: { value: string; label: string }) {
 }
 
 function PerfilView() {
-  const { myActivePlans } = useVinku();
+  const { myActivePlans, discountsActivated } = useVinku();
 
   return (
     <div className="flex flex-col animate-in fade-in duration-300 pb-6">
+      {/* Hero gradient band */}
       <div
         className="w-full h-28 relative"
         style={{
@@ -931,6 +932,7 @@ function PerfilView() {
         }}
       />
 
+      {/* Avatar + edit button */}
       <div className="px-5 -mt-14 flex items-end justify-between mb-4">
         <div className="relative">
           <div
@@ -954,6 +956,7 @@ function PerfilView() {
         </button>
       </div>
 
+      {/* Name + location */}
       <div className="px-5 mb-5">
         <div className="flex items-center gap-2 mb-0.5">
           <h2 className="text-xl font-bold text-white tracking-tight">Duvan Ramos</h2>
@@ -968,16 +971,108 @@ function PerfilView() {
         </div>
       </div>
 
+      {/* ── Stats grid (all dynamic) ── */}
       <div className="px-5 mb-6">
         <div className="grid grid-cols-3 gap-3">
-          <StatCard value={String(23 + myActivePlans.length)} label="Parches asistidos" />
-          <StatCard value="47" label="Amigos conectados" />
-          <StatCard value={String(discountsActivated)} label="Descuentos activados" />
+          <StatCard value={String(myActivePlans.length)} label="Parches activos" />
+          <StatCard value={String(discountsActivated)} label="Descuentos" />
+          <StatCard value="4.9" label="Rating" />
         </div>
       </div>
 
       <div className="mx-5 h-px bg-border/50 mb-5" />
 
+      {/* ── Historial de Asistencia ── */}
+      <div className="px-5 mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">
+            Historial de Asistencia
+          </h3>
+          {myActivePlans.length > 0 && (
+            <span
+              className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+              style={{
+                background: "rgba(99,102,241,0.15)",
+                border: "1px solid rgba(99,102,241,0.3)",
+                color: "#a5b4fc",
+              }}
+            >
+              {myActivePlans.length} {myActivePlans.length === 1 ? "parche" : "parches"}
+            </span>
+          )}
+        </div>
+
+        {myActivePlans.length === 0 ? (
+          /* Empty state */
+          <div
+            className="flex flex-col items-center gap-3 py-9 rounded-2xl"
+            style={{ border: "1.5px dashed rgba(255,255,255,0.08)" }}
+          >
+            <CalendarDays className="w-9 h-9" style={{ color: "rgba(99,102,241,0.25)" }} />
+            <div className="text-center">
+              <p className="text-white/30 text-sm font-medium">Sin parches aún</p>
+              <p className="text-white/20 text-xs mt-0.5">
+                Explora el mapa y únete a tu primer plan
+              </p>
+            </div>
+          </div>
+        ) : (
+          /* History cards */
+          <div className="flex flex-col gap-3">
+            {myActivePlans.map((p) => (
+              <div
+                key={p.id}
+                className="flex items-center gap-3 p-3.5 rounded-2xl bg-card border border-border/60"
+              >
+                {/* Thumbnail */}
+                <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0">
+                  <img
+                    src={p.image}
+                    alt={p.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-sm font-semibold leading-snug truncate">
+                    {p.title}
+                  </p>
+                  <div className="flex items-center gap-1 text-muted-foreground text-[11px] mt-0.5">
+                    <MapPin className="w-2.5 h-2.5 shrink-0" />
+                    <span className="truncate">{p.location}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-muted-foreground text-[11px] mt-0.5">
+                    <CalendarDays className="w-2.5 h-2.5 shrink-0" />
+                    <span>{p.date} · {p.time}</span>
+                  </div>
+                </div>
+
+                {/* Confirmed badge */}
+                <div className="flex flex-col items-center gap-1 shrink-0">
+                  <div
+                    className="w-9 h-9 rounded-full flex items-center justify-center"
+                    style={{
+                      background: "rgba(16,185,129,0.12)",
+                      border: "1px solid rgba(16,185,129,0.3)",
+                      boxShadow: "0 0 12px rgba(16,185,129,0.15)",
+                    }}
+                  >
+                    <Check className="w-4 h-4 text-emerald-400" strokeWidth={2.5} />
+                  </div>
+                  <span className="text-[10px] text-emerald-400 font-semibold">
+                    Unido
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="mx-5 h-px bg-border/50 mb-5" />
+
+      {/* ── Intereses ── */}
       <div className="px-5 mb-6">
         <h3 className="text-xs uppercase tracking-widest text-muted-foreground font-semibold mb-3">
           Intereses
@@ -1001,6 +1096,7 @@ function PerfilView() {
 
       <div className="mx-5 h-px bg-border/50 mb-5" />
 
+      {/* ── Menu ── */}
       <div className="px-5 flex flex-col gap-2">
         {MENU_ITEMS.map(({ icon: Icon, label, sub }) => (
           <button
