@@ -400,6 +400,117 @@ function PlanEmpty({ onGoInicio }: { onGoInicio: () => void }) {
   );
 }
 
+/* ─── Escanear View ─── */
+function EscanearView({ onCancel }: { onCancel: () => void }) {
+  return (
+    <div
+      className="flex flex-col items-center justify-between animate-in fade-in duration-300"
+      style={{ minHeight: "calc(100dvh - 88px)", background: "#000" }}
+    >
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes laser-sweep {
+          0%   { top: 0px; opacity: 1; }
+          48%  { opacity: 1; }
+          50%  { top: calc(100% - 3px); opacity: 0.7; }
+          52%  { opacity: 1; }
+          100% { top: 0px; opacity: 1; }
+        }
+        @keyframes corner-pulse {
+          0%, 100% { opacity: 1; }
+          50%       { opacity: 0.55; }
+        }
+      ` }} />
+
+      {/* Top spacer / label */}
+      <div className="flex flex-col items-center pt-14 pb-6 px-6 text-center">
+        <p className="text-white/40 text-xs uppercase tracking-widest font-semibold">
+          Vinku · Validar parche
+        </p>
+      </div>
+
+      {/* Viewfinder */}
+      <div className="flex flex-col items-center gap-8 flex-1 justify-center w-full px-8">
+        {/* Scanner box */}
+        <div
+          className="relative"
+          style={{ width: 260, height: 260 }}
+        >
+          {/* Dark semi-transparent fill */}
+          <div
+            className="absolute inset-0 rounded-2xl"
+            style={{ background: "rgba(99,102,241,0.03)", border: "1px solid rgba(99,102,241,0.15)" }}
+          />
+
+          {/* Corner markers — top-left */}
+          <svg className="absolute top-0 left-0" width="36" height="36" viewBox="0 0 36 36" fill="none"
+            style={{ animation: "corner-pulse 2.4s ease-in-out infinite" }}>
+            <path d="M2 18 L2 2 L18 2" stroke="#6366f1" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"
+              style={{ filter: "drop-shadow(0 0 6px #6366f1)" }} />
+          </svg>
+          {/* Corner markers — top-right */}
+          <svg className="absolute top-0 right-0" width="36" height="36" viewBox="0 0 36 36" fill="none"
+            style={{ animation: "corner-pulse 2.4s ease-in-out infinite 0.6s" }}>
+            <path d="M34 18 L34 2 L18 2" stroke="#6366f1" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"
+              style={{ filter: "drop-shadow(0 0 6px #6366f1)" }} />
+          </svg>
+          {/* Corner markers — bottom-left */}
+          <svg className="absolute bottom-0 left-0" width="36" height="36" viewBox="0 0 36 36" fill="none"
+            style={{ animation: "corner-pulse 2.4s ease-in-out infinite 1.2s" }}>
+            <path d="M2 18 L2 34 L18 34" stroke="#6366f1" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"
+              style={{ filter: "drop-shadow(0 0 6px #6366f1)" }} />
+          </svg>
+          {/* Corner markers — bottom-right */}
+          <svg className="absolute bottom-0 right-0" width="36" height="36" viewBox="0 0 36 36" fill="none"
+            style={{ animation: "corner-pulse 2.4s ease-in-out infinite 1.8s" }}>
+            <path d="M34 18 L34 34 L18 34" stroke="#6366f1" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"
+              style={{ filter: "drop-shadow(0 0 6px #6366f1)" }} />
+          </svg>
+
+          {/* Laser line — contained inside the box */}
+          <div className="absolute inset-0 overflow-hidden rounded-2xl">
+            <div
+              className="absolute left-0 w-full"
+              style={{
+                height: 3,
+                background: "linear-gradient(90deg, transparent 0%, #818cf8 20%, #a5b4fc 50%, #818cf8 80%, transparent 100%)",
+                boxShadow: "0 0 10px 3px rgba(99,102,241,0.7), 0 0 24px 6px rgba(99,102,241,0.3)",
+                borderRadius: 2,
+                animation: "laser-sweep 2.2s cubic-bezier(0.45,0,0.55,1) infinite",
+              }}
+            />
+          </div>
+
+          {/* Center QR ghost icon */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <QrCode className="w-16 h-16" style={{ color: "rgba(99,102,241,0.12)" }} />
+          </div>
+        </div>
+
+        {/* Instruction text */}
+        <p className="text-white/60 text-sm text-center leading-relaxed max-w-[220px]">
+          Escanea el código de tu mesa para validar tu parche y obtener tu descuento.
+        </p>
+      </div>
+
+      {/* Cancel button */}
+      <div className="pb-8 px-8 w-full">
+        <button
+          onClick={onCancel}
+          className="w-full py-4 rounded-2xl font-semibold text-sm tracking-wide transition-all duration-200 active:scale-[0.97]"
+          style={{
+            background: "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            color: "rgba(255,255,255,0.7)",
+          }}
+          data-testid="btn-cancelar-scan"
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Mobile Layout ─── */
 function MobileLayout() {
   const [activeTab, setActiveTab] = useState<Tab>("inicio");
@@ -434,28 +545,7 @@ function MobileLayout() {
           )}
 
           {activeTab === "escanear" && (
-            <div className="flex flex-col h-full p-6 animate-in fade-in zoom-in-95 duration-300">
-              <div className="mt-12 flex flex-col items-center justify-center h-full max-h-[600px]">
-                <div className="text-center mb-10">
-                  <h2 className="text-3xl font-bold text-white mb-2">Escanear</h2>
-                  <p className="text-muted-foreground text-sm max-w-[240px] mx-auto">
-                    Escanea un código QR para acceder a un evento.
-                  </p>
-                </div>
-                <div className="relative w-64 h-64 rounded-3xl border-2 border-primary/50 flex items-center justify-center bg-card/30 overflow-hidden shadow-[0_0_30px_rgba(99,102,241,0.15)]">
-                  <div
-                    className="absolute top-0 left-0 w-full h-[2px] bg-primary shadow-[0_0_10px_rgba(99,102,241,1)]"
-                    style={{ animation: "scan 3s linear infinite" }}
-                  />
-                  <style dangerouslySetInnerHTML={{ __html: `@keyframes scan { 0% { transform: translateY(0); } 50% { transform: translateY(256px); } 100% { transform: translateY(0); } }` }} />
-                  <div className="absolute inset-4 border-2 border-dashed border-muted-foreground/30 rounded-2xl" />
-                  <QrCode className="w-16 h-16 text-primary/40" />
-                </div>
-                <button className="mt-12 bg-primary/10 text-primary border border-primary/30 px-6 py-3 rounded-full font-medium tracking-wide hover:bg-primary/20 transition-colors">
-                  Ingresar código manual
-                </button>
-              </div>
-            </div>
+            <EscanearView onCancel={() => setActiveTab("inicio")} />
           )}
 
           {activeTab === "perfil" && (
