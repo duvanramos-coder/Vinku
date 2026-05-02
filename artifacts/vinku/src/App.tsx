@@ -13,6 +13,12 @@ import {
   Users,
   ArrowLeft,
   Loader2,
+  Star,
+  Settings,
+  Ticket,
+  History,
+  HelpCircle,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -511,6 +517,144 @@ function EscanearView({ onCancel }: { onCancel: () => void }) {
   );
 }
 
+/* ─── Perfil View ─── */
+const INTERESES = ["Salsa", "Cerveza Artesanal", "Rooftops", "Fútbol", "Electrónica", "Planes Nocturnos"];
+
+const MENU_ITEMS = [
+  { icon: Ticket,      label: "Mis Entradas",   sub: "Ver historial de accesos" },
+  { icon: History,     label: "Historial",       sub: "Parches anteriores" },
+  { icon: Settings,    label: "Ajustes",         sub: "Cuenta y privacidad" },
+  { icon: HelpCircle,  label: "Ayuda",           sub: "Soporte Vinku" },
+];
+
+function StatCard({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-1 py-4 rounded-2xl bg-card border border-border/60">
+      <span
+        className="text-3xl font-bold text-white leading-none"
+        style={{ textShadow: "0 0 18px rgba(99,102,241,0.45)" }}
+      >
+        {value}
+      </span>
+      <span className="text-[11px] text-muted-foreground font-medium text-center leading-tight px-2">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function PerfilView() {
+  return (
+    <div className="flex flex-col animate-in fade-in duration-300 pb-6">
+      {/* Header banner with subtle gradient */}
+      <div
+        className="w-full h-28 relative"
+        style={{
+          background: "linear-gradient(160deg, rgba(99,102,241,0.22) 0%, rgba(99,102,241,0.05) 60%, transparent 100%)",
+        }}
+      />
+
+      {/* Avatar — overlaps banner */}
+      <div className="px-5 -mt-14 flex items-end justify-between mb-4">
+        <div className="relative">
+          {/* Avatar circle */}
+          <div
+            className="w-24 h-24 rounded-full flex items-center justify-center border-4 border-background"
+            style={{
+              background: "linear-gradient(135deg, #6366f1 0%, #818cf8 100%)",
+              boxShadow: "0 0 0 1px rgba(99,102,241,0.4), 0 0 24px rgba(99,102,241,0.25)",
+            }}
+          >
+            <span className="text-3xl font-bold text-white tracking-tight select-none">JP</span>
+          </div>
+          {/* Online indicator */}
+          <span className="absolute bottom-1.5 right-1.5 w-4 h-4 rounded-full bg-emerald-500 border-2 border-background block"
+            style={{ boxShadow: "0 0 6px rgba(16,185,129,0.7)" }}
+          />
+        </div>
+
+        {/* Edit / Settings shortcut */}
+        <button className="mt-8 px-4 py-2 rounded-xl border border-border/70 bg-card text-muted-foreground text-xs font-semibold hover:border-primary/40 hover:text-primary transition-colors flex items-center gap-1.5">
+          <Settings className="w-3.5 h-3.5" />
+          Editar perfil
+        </button>
+      </div>
+
+      {/* User info */}
+      <div className="px-5 mb-5">
+        <div className="flex items-center gap-2 mb-0.5">
+          <h2 className="text-xl font-bold text-white tracking-tight">Juan Pablo Ruiz</h2>
+          <span className="text-muted-foreground text-sm">· 24</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <MapPin className="w-3.5 h-3.5 text-primary" />
+          <span className="text-sm font-medium" style={{ color: "#818cf8" }}>
+            Montería&nbsp;·&nbsp;Embajador
+          </span>
+          <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 ml-0.5" />
+        </div>
+      </div>
+
+      {/* Stats grid */}
+      <div className="px-5 mb-6">
+        <div className="grid grid-cols-3 gap-3">
+          <StatCard value="23" label="Parches asistidos" />
+          <StatCard value="47" label="Amigos conectados" />
+          <StatCard value="4.9" label="Rating comunidad" />
+        </div>
+      </div>
+
+      {/* Separator */}
+      <div className="mx-5 h-px bg-border/50 mb-5" />
+
+      {/* Interests */}
+      <div className="px-5 mb-6">
+        <h3 className="text-xs uppercase tracking-widest text-muted-foreground font-semibold mb-3">
+          Intereses
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          {INTERESES.map((tag) => (
+            <span
+              key={tag}
+              className="px-3 py-1.5 rounded-full text-xs font-semibold border"
+              style={{
+                background: "rgba(99,102,241,0.1)",
+                border: "1px solid rgba(99,102,241,0.25)",
+                color: "#a5b4fc",
+              }}
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Separator */}
+      <div className="mx-5 h-px bg-border/50 mb-5" />
+
+      {/* Menu items */}
+      <div className="px-5 flex flex-col gap-2">
+        {MENU_ITEMS.map(({ icon: Icon, label, sub }) => (
+          <button
+            key={label}
+            className="w-full flex items-center gap-4 p-4 rounded-2xl bg-card border border-border/60 hover:border-border transition-colors active:scale-[0.98] duration-150"
+            data-testid={`btn-menu-${label.toLowerCase().replace(/\s+/g, "-")}`}
+          >
+            <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+              <Icon className="w-4 h-4 text-primary" />
+            </div>
+            <div className="flex-1 text-left">
+              <p className="text-sm font-semibold text-white">{label}</p>
+              <p className="text-xs text-muted-foreground">{sub}</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Mobile Layout ─── */
 function MobileLayout() {
   const [activeTab, setActiveTab] = useState<Tab>("inicio");
@@ -548,33 +692,7 @@ function MobileLayout() {
             <EscanearView onCancel={() => setActiveTab("inicio")} />
           )}
 
-          {activeTab === "perfil" && (
-            <div className="flex flex-col h-full p-6 animate-in fade-in zoom-in-95 duration-300">
-              <div className="mt-12 flex-1">
-                <h2 className="text-3xl font-bold text-white mb-8">Mi Perfil</h2>
-                <div className="flex items-center gap-4 mb-10">
-                  <div className="w-16 h-16 rounded-full bg-card border border-border flex items-center justify-center overflow-hidden">
-                    <User className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-medium text-white">Usuario Vinku</h3>
-                    <p className="text-muted-foreground text-sm">Gestiona tu cuenta y preferencias</p>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  {["Entradas", "Historial", "Ajustes", "Ayuda"].map((item) => (
-                    <div
-                      key={item}
-                      className="p-4 rounded-xl bg-card border border-border flex items-center justify-between cursor-pointer hover:bg-muted/50 transition-colors"
-                    >
-                      <span className="font-medium text-foreground/90">{item}</span>
-                      <span className="text-muted-foreground">→</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
+          {activeTab === "perfil" && <PerfilView />}
         </main>
 
         {/* Bottom Navigation */}
