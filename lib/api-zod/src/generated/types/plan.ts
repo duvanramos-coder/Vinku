@@ -4,6 +4,7 @@
  * Api
  * OpenAPI spec version: 1.0.0
  */
+
 export interface Plan {
   id?: string;
   title?: string;
@@ -15,10 +16,5 @@ export interface Plan {
   availableCupos?: number;
   totalCupos?: number;
   category?: string;
-  createdAt?: string;
-}
-
-export interface JoinRequest {
-  planId: string;
-  userId: string;
+  createdAt?: Date;
 }

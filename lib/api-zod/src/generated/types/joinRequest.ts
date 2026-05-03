@@ -5,5 +5,7 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export * from "./joinRequest";
-export * from "./plan";
+export interface JoinRequest {
+  planId: string;
+  userId: string;
+}

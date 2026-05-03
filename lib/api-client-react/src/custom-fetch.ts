@@ -15,7 +15,7 @@ const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 // Module-level configuration
 // ---------------------------------------------------------------------------
 
-let _baseUrl: string | null = null;
+let _baseUrl: string | null = "https://3001-firebase-vinku-1777742037873.cluster-udxxdyopu5c7cwhhtg6mmadhvs.cloudworkstations.dev";
 let _authTokenGetter: AuthTokenGetter | null = null;
 
 /**

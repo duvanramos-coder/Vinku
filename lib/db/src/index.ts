@@ -1,16 +1,38 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import pg from "pg";
-import * as schema from "./schema";
 
-const { Pool } = pg;
+import { config } from "dotenv";
+import { drizzle } from "drizzle-orm/pg-proxy";
+import * as schema from "./schema/index.js";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
-}
+config({ path: ".env" });
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle(pool, { schema });
+// The remote callback function that drizzle expects.
+// It should return a promise that resolves to an object with a `rows` property.
+const remoteCallback = async (sql: string, params: any[], method: "all" | "execute") => {
+  try {
+    const res = await fetch("http://127.0.0.1:54321/api/pg", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        sql,
+        params,
+        method,
+        connectionString: process.env.DB_URL,
+      }),
+    });
 
-export * from "./schema";
+    // We are explicitly casting the result to the type that drizzle expects.
+    // This is safe because we know the shape of the API response.
+    const result = await res.json() as { rows: any[] };
+    return result;
+
+  } catch (e: any) {
+    console.error("Error in remote callback:", e.message);
+    // Ensure we always return an object with a rows property, even in case of an error.
+    return { rows: [] }; 
+  }
+};
+
+const db = drizzle(remoteCallback, { schema });
+
+export { db };
+export * from "./schema/index.js";

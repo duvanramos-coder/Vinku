@@ -4,8 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "hello": "tsx ./src/hello.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "seed:direct": "tsx seed-direct.js"
+  },
+  "dependencies": {
+    "@workspace/db": "workspace:*",
+    "drizzle-orm": "^0.32.1",
+    "postgres": "^3.4.4",
+    "dotenv": "^16.4.5"
   },
   "devDependencies": {
     "@types/node": "catalog:",

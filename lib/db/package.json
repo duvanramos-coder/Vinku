@@ -8,14 +8,22 @@
     "./schema": "./src/schema/index.ts"
   },
   "scripts": {
+    "build": "tsc",
     "push": "drizzle-kit push --config ./drizzle.config.ts",
-    "push-force": "drizzle-kit push --force --config ./drizzle.config.ts"
+    "push-force": "drizzle-kit push --force --config ./drizzle.config.ts",
+    "seed": "tsx src/seed.ts",
+    "seed:neon": "tsx ./src/seed-neon.ts",
+    "generate": "drizzle-kit generate",
+    "migrate": "drizzle-kit migrate"
   },
   "dependencies": {
     "drizzle-orm": "catalog:",
     "drizzle-zod": "^0.8.3",
     "pg": "^8.20.0",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "tsx": "^4.16.2",
+    "postgres": "^3.4.4",
+    "dotenv": "^16.4.5"
   },
   "devDependencies": {
     "@types/node": "catalog:",
